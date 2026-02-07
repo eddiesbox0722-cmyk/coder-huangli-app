@@ -2,12 +2,15 @@ import { ScrollView, Text, View, TouchableOpacity, Switch, Platform } from "reac
 import { useState, useEffect } from "react";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
+import { useThemeContext } from "@/lib/theme-provider";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import type { ColorScheme } from "@/constants/theme";
 
 type ThemeMode = 'light' | 'dark' | 'system';
 
 export default function SettingsScreen() {
   const colors = useColors();
+  const { colorScheme, setColorScheme } = useThemeContext();
   const [notificationEnabled, setNotificationEnabled] = useState(true);
   const [notificationTime, setNotificationTime] = useState('09:00');
   const [themeMode, setThemeMode] = useState<ThemeMode>('system');
@@ -53,6 +56,19 @@ export default function SettingsScreen() {
   const handleThemeChange = (mode: ThemeMode) => {
     setThemeMode(mode);
     saveSettings('themeMode', mode);
+    
+    // 应用主题变更
+    if (mode === 'light') {
+      setColorScheme('light');
+    } else if (mode === 'dark') {
+      setColorScheme('dark');
+    } else {
+      // 跟随系统
+      const systemScheme = Platform.OS === 'web' 
+        ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+        : 'light';
+      setColorScheme(systemScheme as ColorScheme);
+    }
   };
 
   const timeOptions = [
@@ -132,29 +148,51 @@ export default function SettingsScreen() {
           
           <View className="bg-surface rounded-2xl border border-border overflow-hidden">
             <View className="px-6 py-4">
-              <Text className="text-foreground text-base font-medium mb-3">
+              <Text className="text-foreground text-base font-medium mb-4">
                 主题模式
               </Text>
-              <View className="flex-row">
-                {(['light', 'dark', 'system'] as ThemeMode[]).map((mode) => (
-                  <TouchableOpacity
-                    key={mode}
-                    onPress={() => handleThemeChange(mode)}
-                    className={`flex-1 py-3 rounded-lg mr-2 last:mr-0 ${
-                      themeMode === mode
-                        ? 'bg-primary'
-                        : 'bg-background border border-border'
-                    }`}
-                  >
-                    <Text
-                      className={`text-center text-sm font-medium ${
-                        themeMode === mode ? 'text-white' : 'text-foreground'
+              
+              {/* 主题按钮组 */}
+              <View className="flex-row gap-2 mb-4">
+                {(['light', 'dark', 'system'] as ThemeMode[]).map((mode) => {
+                  const isSelected = themeMode === mode;
+                  let modeLabel = '';
+                  if (mode === 'light') {
+                    modeLabel = '☀️ 浅色';
+                  } else if (mode === 'dark') {
+                    modeLabel = '🌙 深色';
+                  } else {
+                    modeLabel = '🔄 跟随系统';
+                  }
+                  
+                  return (
+                    <TouchableOpacity
+                      key={mode}
+                      onPress={() => handleThemeChange(mode)}
+                      className={`flex-1 py-3 rounded-lg active:opacity-80 ${
+                        isSelected
+                          ? 'bg-primary'
+                          : 'bg-background border border-border'
                       }`}
                     >
-                      {mode === 'light' ? '浅色' : mode === 'dark' ? '深色' : '跟随系统'}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                      <Text
+                        className={`text-center text-sm font-semibold ${
+                          isSelected ? 'text-white' : 'text-foreground'
+                        }`}
+                      >
+                        {modeLabel}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+              
+              {/* 当前主题显示 */}
+              <View className="bg-background rounded-lg p-3 border border-border">
+                <Text className="text-muted text-xs mb-1">当前主题</Text>
+                <Text className="text-foreground text-sm font-medium">
+                  {colorScheme === 'light' ? '☀️ 浅色模式' : '🌙 深色模式'}
+                </Text>
               </View>
             </View>
           </View>
